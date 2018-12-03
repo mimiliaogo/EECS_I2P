@@ -21,6 +21,7 @@ int main()
     //len
 //    scanf("%s", str);
 //    printf("%u\n", mylen2(str));
+
     //sum
     scanf("%d", &n);
     for (i=0; i<n; i++) {
