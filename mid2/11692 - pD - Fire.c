@@ -1,46 +1,43 @@
 #include <stdio.h>
-char map[1005][1005];
+char map[1010][1010];
 int m, n;
-int isalive = 0;
+int alive;
 void water(int r, int c);
 int main()
 {
-    int i,j;
-    int isfinde = 0;
-    int er, ec;
+
+    int i, j, erow, ecol;
     scanf("%d%d", &m, &n);
     for (i=0; i<m; i++) {
         scanf("%s", &map[i]);
     }
-    for (i=0; i<m&&isfinde==0; i++) {
-        for (j=0; j<n&&isfinde==0; j++) {
+    for (i=0; i<m; i++) {
+        for (j=0; j<n; j++) {
             if (map[i][j]=='e') {
-                er = i;
-                ec = j;
-                isfinde = 1;
+                erow = i;
+                ecol = j;
             }
         }
     }
-    water(er, ec);
-    if (isalive==1) printf("Alive!\n");
-    else printf("Dead!\n");
+    water(erow, ecol);
+    if (alive) printf("Alive!");
+    else printf("Dead!");
+    return 0;
+
 }
 void water(int r, int c)
 {
-    if (r>=0&&c>=0&&r<m&&c<n&&isalive!=1) {
+    if (r>=0&&r<m&&c>=0&&c<n) {
         if (map[r][c]=='~') {
-            isalive = 1;
+            alive = 1;
+            return;
         }
-        else if (map[r][c]!='^'){
-            map[r][c]='^';
+        else if (map[r][c]!='^') {
+            map[r][c] = '^';
             water(r+1, c);
             water(r-1, c);
             water(r, c+1);
             water(r, c-1);
         }
-
-
-
     }
-
 }
