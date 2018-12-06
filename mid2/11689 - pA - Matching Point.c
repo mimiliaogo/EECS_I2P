@@ -10,12 +10,12 @@ void search(int curt, int curs)
     if (curs==lens) count++;
     else {
         while (lent-i>=lens-curs) {
-            if(t[i]==s[curs]) search(i+1, curs+1);
+            if (t[i]==s[curs]) {
+                search(i+1, curs+1);
+            }
             i++;
         }
-
     }
-
 }
 int main()
 {

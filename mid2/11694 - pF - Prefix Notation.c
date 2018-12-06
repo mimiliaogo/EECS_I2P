@@ -1,10 +1,8 @@
 #include <stdio.h>
-
 float cal();
 int main()
 {
     printf("%.3f", cal());
-    return 0;
 }
 float cal()
 {
@@ -34,7 +32,5 @@ float cal()
     else if (isdigit(c)) {
         return c-'0';
     }
-    else if (c=='=') {
-        return;
-    }
+    else return;
 }
