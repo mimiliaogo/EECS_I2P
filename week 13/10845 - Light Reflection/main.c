@@ -1,6 +1,5 @@
 #include <stdio.h>
 int h, w;
-int map[100][100];
 int pr, pc;
 int isfirst;
 void light(int r, int c, int dir)
@@ -25,14 +24,33 @@ int main()
 
     int k, i;
     int orir, oric;
+    int dir=0;
     scanf("%d%d%d%d%d",&h, &w, &orir,&oric, &k);
     isfirst = 1;
-    light(orir, oric, 0);
-    if ((pr==h||pr==1)&&(pc==w||pc==1)) printf("(%d,%d)", pr, pc);
-    for (i=1; i<k-1; i++) {
-        isfirst = 1;
-        light(pr, pc, i%4);
+    pr = orir;
+    pc = oric;
+//    light(orir, oric, dir);
+//    if ((pr==h||pr==1)&&(pc==w||pc==1)) printf("(%d,%d)", pr, pc);
+    for (i=2; i<=k; i++) {
+        light(pr, pc, dir);
         if ((pr==h||pr==1)&&(pc==w||pc==1)) break;
+        isfirst = 1;
+        if (dir==0) {
+            if (pr==1) dir = 1;
+            else dir = 3;
+        }
+        else if (dir==1) {
+            if (pr==h) dir = 0;
+            else dir = 2;
+        }
+        else if (dir==2) {
+            if (pr==h) dir = 3;
+            else dir = 1;
+        }
+        else {
+            if (pr==1) dir = 2;
+            else dir = 0;
+        }
     }
     printf("(%d,%d)", pr, pc);
 }
