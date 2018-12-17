@@ -43,7 +43,7 @@ int main()
             if (pr==h) dir = UL;
             else dir = DR;
         }
-        else  {
+        else  if (dir==DR){
             if (pr==h) dir = UR;
             else dir = DL;
         }

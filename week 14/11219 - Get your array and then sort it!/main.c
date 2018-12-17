@@ -12,11 +12,11 @@ int* readInput() {
     return seq;
 }
 
-void my_sort(int** B)
+void my_sort(int* B)
 {
+    int *seq = *B;
+   
     int i, j, temp;
-    int *seq;
-    seq = *B;
     for (i=1; i<=seq[0]; i++) {
         for (j=i; j<=seq[0]; j++) {
             if (seq[i]>seq[j]) {
@@ -24,8 +24,9 @@ void my_sort(int** B)
                 seq[i] = seq[j];
                 seq[j] = temp;
             }
+            
         }
-     }
+    }
 
 }
 int main() {
