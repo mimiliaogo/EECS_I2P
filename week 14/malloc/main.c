@@ -17,6 +17,7 @@ int main(void)
    for (i = 0; i < array_size; i++) {
       ptd[i] = (double) rand() / RAND_MAX;
    }
+
    for (i = 0; i < array_size; i++) {
       if (*(ptd+i) > 0.5)
          printf("%d: %f\n", i, ptd[i]);
