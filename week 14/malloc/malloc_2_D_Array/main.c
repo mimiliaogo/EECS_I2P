@@ -15,7 +15,7 @@ int main()
     }
     /* wrong way cuz address isn't continuous
     for (i=0; i<100; i++) {
-        a = (int*)malloc(sizeof(int)*50);
+        a = (int*)malloc(sizeof(int)*50);//每次取到的地址不一樣
         b[i] = a; //b[i]save the address of a(a 50 long string)
     }
     */
