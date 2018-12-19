@@ -1,4 +1,5 @@
 /*並沒有直接把字串交換，而是擦掉地址*/
+/*對指標陣列做 qsort*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,9 +37,7 @@ int main(void)
         printf("%s\n", ptrs[i]);
     }
     printf("\n");
-    for (i=0; i<SIZE; i++) {
-        printf("%s\n", strs[i]);
-    }
+
 
 
     return 0;
