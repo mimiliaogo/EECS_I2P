@@ -24,11 +24,11 @@ int main(void)
 
     for (i=0; i<SIZE; i++) {
         data1[i] = rand()%SIZE;//if dice-->rand()%6--->0~5
-        data2[i] = (double) rand()/RAND_MAX;//0~1 random numbers 
+        data2[i] = (double) rand()/RAND_MAX;//0~1 random numbers
         /*ex.100*(0~1)*/
-        /*srand(time) to make a start point. by the time diff, the rand num will 
+        /*srand(time) to make a start point. by the time diff, the rand num will
         different.*/
-        /*but  rand() will gernerate the same order of num each time*/
+        /*but  rand() will generate the same order of num each time*/
     }
 
     printf("original: ");
@@ -39,7 +39,7 @@ int main(void)
 
     printf("  sorted: ");
     qsort(data1, SIZE, sizeof(int), compare_int);
-    /*1.address(type:void*) 2.size 3.每一筆資料占多少空間 
+    /*1.address(type:void*) 2.size 3.每一筆資料占多少空間
     4.compare function(type:function name convert to memory address)
     int (*f)(const void *a, const void *b) variable type of function */
     for (i=0; i<SIZE; i++) {
