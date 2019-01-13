@@ -14,6 +14,7 @@
 #define ABOUT 3
 #define EXIT 4
 #define GAME_END 6
+#define STORE 7
 
 // ALLEGRO Variables
 ALLEGRO_DISPLAY* display = NULL;
@@ -27,6 +28,9 @@ ALLEGRO_BITMAP *bullet_image = NULL;
 ALLEGRO_BITMAP *background = NULL;
 ALLEGRO_BITMAP *about_background = NULL;
 ALLEGRO_BITMAP *exit_background = NULL;
+ALLEGRO_BITMAP *store= NULL;
+ALLEGRO_BITMAP *no_money= NULL;
+ALLEGRO_BITMAP *image_marcie_bomb = NULL;
 ALLEGRO_KEYBOARD_STATE keyState ;
 ALLEGRO_TIMER *timer = NULL;
 ALLEGRO_TIMER *timer2 = NULL;
@@ -60,14 +64,39 @@ Character character3;
 Character bullet;
 Character bomb;
 
+typedef struct weapon
+{
+    int x;
+    int y;
+    int use_time;
+    bool is_using;
+    ALLEGRO_BITMAP *image_path;
+
+} WEAPON;
+WEAPON shield;
+
+typedef struct
+{
+    int score;
+    int money;
+    char name[25];
+} USER;
+
 char title_ani[25] = "Hi,everybody";
+char money_str[25];
+char weapon_str[25];
 int pre_ani_str = 11;
-int i = 0;
+
 int imageWidth = 0;
 int imageHeight = 0;
 int draw = 0;
 int done = 0;
 int window = PRE_ANIMATION;
+int NumOfData;
+int k = 0;
+int shield_time = 0;
+USER data[100000];
+
 float move_speed = 10.0;
 float bullet_speed = 50;
 float bomb_speed = 60;
@@ -85,7 +114,9 @@ bool is_bomb = false;
 bool show_origin = true;
 bool comp_win = false;
 bool user_win = false;
-
+bool isno_money = false;
+bool name_end = false;
+bool show_origin_user = true;
 void show_err_msg(int msg);
 void game_init();
 void game_begin();
@@ -97,6 +128,16 @@ void main_menu_button();
 
 int main(int argc, char *argv[]) {
     int msg = 0;
+    FILE *fin, *fout;
+    fin = fopen("user_data.txt", "r");
+    fscanf(fin, "%d", &NumOfData);
+    int i;
+    printf("num:%d\n", NumOfData);
+    NumOfData += 1;
+    for (i=0; i<NumOfData; i++) {
+        fscanf(fin, "%s", data[i].name);
+        fscanf(fin, "%d%d", &data[i].score, &data[i].money);
+    }
 
     game_init();
     game_begin();
@@ -164,11 +205,21 @@ void game_init() {
     // Imag load
     about_background = al_load_bitmap("about.png");
     exit_background = al_load_bitmap("exit.png");
+    store = al_load_bitmap("store.png");
+    no_money = al_load_bitmap("no_money.png");
+//    pre_animation_pic = al_load_bitmap("envelop.png");
+
+    //weapon initial
+    shield.use_time = 0;
+    shield.is_using = false;
+    data[NumOfData-1].money = 200;
 
 }
 void pre_animation()
 {
-    al_clear_to_color(al_map_rgb(0,0,200));
+    al_draw_bitmap(about_background, 0,0, 0);
+    al_draw_text(font_20, al_map_rgb(255,215,0), WIDTH/2, 100 , ALLEGRO_ALIGN_CENTRE, "Please enter your name!");
+    al_draw_text(font_20, al_map_rgb(255,215,0), WIDTH/2-100, 600 , ALLEGRO_ALIGN_CENTRE, data[NumOfData-1].name);
 
 }
 void main_menu()
@@ -186,8 +237,23 @@ void main_menu()
 void main_menu_button()
 {
     al_draw_rectangle(10,7,160,30,al_map_rgb(23, 30, 100), 3);
-    al_draw_text(font_15, al_map_rgb(103, 20, 89), 15, 10,0,"Main menu");
+    al_draw_text(font_15, al_map_rgb(103, 20, 89), 15, 10,0,"Main Menu");
+}
 
+void print_money()
+{
+//    al_draw_rectangle(WIDTH/2+200,HEIGHT/2-250,WIDTH/2+500,HEIGHT/2-300,al_map_rgb(23, 30, 100), 3);
+    sprintf(money_str, "%d", data[NumOfData-1].money);
+    al_draw_text(font_20, al_map_rgb(255,255,255), WIDTH/2+200, HEIGHT/2-320 , ALLEGRO_ALIGN_CENTRE, money_str);
+    al_draw_text(font_20, al_map_rgb(255,255,255), WIDTH/2+160, HEIGHT/2-320 , ALLEGRO_ALIGN_CENTRE, "$");
+
+}
+
+void show_weapon_time()
+{
+    al_draw_text(font_20, al_map_rgb(255,255,255), 60, HEIGHT/2-320 , ALLEGRO_ALIGN_CENTRE, "Shield:");
+    sprintf(weapon_str, "%d", shield.use_time);
+    al_draw_text(font_20, al_map_rgb(255,255,255), 150, HEIGHT/2-320 , ALLEGRO_ALIGN_CENTRE, weapon_str);
 
 }
 
@@ -209,10 +275,12 @@ int collide_computer()
 
     return 0;
 }
+
 int collide_user()
 {
-    if (bomb.y>character1.y&&is_bomb==false&&bomb.x>character1.x-5&&bomb.x<character1.x+65) {
+    if (bomb.y>character1.y&&is_bomb==false&&bomb.x>character1.x-5&&bomb.x<character1.x+65&&shield.is_using==false) {
         is_bomb = true;
+        show_origin_user = false;
         return 1;
     }
     return 0;
@@ -242,13 +310,11 @@ int process_event(){
     al_wait_for_event(event_queue, &event);
 
     // Our setting for controlling animation
-    if(event.timer.source == animation_timer) {
-
-            al_draw_text(font_20, al_map_rgb(255,215,0), WIDTH/2, 100 , ALLEGRO_ALIGN_CENTRE, title_ani);
-
-
-
-    }
+//    if(event.timer.source == animation_timer) {
+//
+//        al_draw_text(font_20, al_map_rgb(255,215,0), WIDTH/2, 100 , ALLEGRO_ALIGN_CENTRE, title_ani);
+//
+//    }
     if(event.timer.source == timer){
 
         if(character2.x < -150) dir = false;
@@ -257,6 +323,8 @@ int process_event(){
         if(dir) character2.x -= move_speed;
         else character2.x += move_speed;
         move_speed += 0.0001;
+
+        shield_time ++;
 
     }
     if(event.timer.source == timer2){
@@ -305,6 +373,9 @@ int process_event(){
             // For Start Menu
             case ALLEGRO_KEY_ENTER:
                 judge_next_window = true;//for window 1
+                if (window==PRE_ANIMATION) {
+                    name_end = true;
+                }
                 break;
             case ALLEGRO_KEY_SPACE:
                 if (window==2) {
@@ -317,7 +388,9 @@ int process_event(){
                 break;
             // For About
             case ALLEGRO_KEY_A:
-                window = 3;
+                if (window == MAIN_MENU) {
+                    window = 3;
+                }
                 break;
             // For Exit
             case ALLEGRO_KEY_E:
@@ -327,8 +400,44 @@ int process_event(){
                 }
                 else if (window==1) window = 4;
                 break;
+            case ALLEGRO_KEY_S:
+                if (window==MAIN_MENU) {
+                    window = STORE;
+                }
+                break;
+            //for shield
+            case ALLEGRO_KEY_P:
+                if (window==STORE) {
+                    if (data[NumOfData-1].money<=0) {
+                        isno_money = true;
+                    }
+                    else {
+                        data[NumOfData-1].money -= 50;
+                        shield.use_time += 1;
+                    }
+                }
+                else if (window == 2) {
+                    if (shield.use_time>0) {
+                        shield.use_time -= 1;
+                        shield_time = 0;
+                        shield.is_using = true;
+                    }
+                }
+            break;
         }
     }
+    //keyboard input
+    if (event.type==ALLEGRO_EVENT_KEY_CHAR&&name_end==false) {
+        if (window==PRE_ANIMATION) {
+            data[NumOfData-1].name[k] = event.keyboard.unichar;
+            data[NumOfData-1].name[k+1] = '\0';
+            k++;
+
+        }
+    }
+
+    if (name_end==true) data[NumOfData-1].name[k-1] = '\0';
+
     // Mouse position
     if(event.type==ALLEGRO_EVENT_MOUSE_AXES) {
         mouse_x = event.mouse.x;
@@ -362,10 +471,15 @@ int game_run() {
 
     if (window == PRE_ANIMATION) {
         pre_animation();
+//        scanf(fin, "%s", data[NumOfData-1].name);
+
+        main_menu_button();
+        al_flip_display();
         if (!al_is_event_queue_empty(event_queue)) {
             error = process_event();
+            if (judge_last_window) window = 1;
         }
-        al_flip_display();
+
 
     }
     // First window(Menu)
@@ -390,9 +504,8 @@ int game_run() {
                 bullet.image_path = al_load_bitmap("bullet.png");
                 bomb.image_path = al_load_bitmap("bullet.png");
                 background = al_load_bitmap("snoopy_background_resized.png");
-
                 image_snoopy_right_shoot = al_load_bitmap("snoopy_right_shoot.png");
-
+                image_marcie_bomb = al_load_bitmap("marcie_bomb.png");
                 //Initialize Timer
                 timer  = al_create_timer(1.0/15.0);
                 timer2  = al_create_timer(1.0);
@@ -420,12 +533,13 @@ int game_run() {
         // Change Image for animation
 
         al_draw_bitmap(background, 0,0, 0);
+        show_weapon_time();
         blood_rec_computer(len_comp);
         blood_rec_user(len_user);
         main_menu_button();
-        al_draw_rectangle(character1.x-5,character1.y,character1.x+65,character1.y ,al_map_rgb(255, 0, 0), 10);
 
-        if(ture) al_draw_bitmap(character1.image_path, character1.x, character1.y, 0);
+
+
         //snoopy
 
         if (show_origin==false) {
@@ -437,7 +551,10 @@ int game_run() {
             else al_draw_bitmap(character3.image_path, character2.x, character2.y, 0);
         }
 
-
+        if (show_origin_user==false) al_draw_bitmap(image_marcie_bomb, character1.x, character1.y, 0);
+        else {
+            if(ture) al_draw_bitmap(character1.image_path, character1.x, character1.y, 0);
+        }
         //bullet for user
 
         if(bullet_shoot_user) al_draw_bitmap(bullet.image_path, bullet.x, bullet.y, 0);
@@ -452,6 +569,12 @@ int game_run() {
             len_user -= 10;
         }
         if (bullet.y<-300) show_origin = true;
+        if (bomb.y>900) show_origin_user = true;
+        if (shield_time>80) shield.is_using = false;
+        if (shield.is_using == true) {
+            al_draw_rectangle(character1.x,character1.y-10,character1.x+65,character1.y+150 ,al_map_rgb(234, 24, 145), 5);
+        }
+
 
         al_flip_display();
         al_clear_to_color(al_map_rgb(0,0,0));
@@ -487,6 +610,23 @@ int game_run() {
             if (judge_last_window) window = 1;
         }
     }
+    else if (window==STORE) {
+        al_draw_bitmap(store, 0,0, 0);
+        print_money();
+        main_menu_button();
+        show_weapon_time();
+        if (isno_money==true) {
+            al_draw_bitmap(no_money, 300,300, 0);
+        }
+        al_flip_display();
+        al_clear_to_color(al_map_rgb(0,0,0));
+        if (!al_is_event_queue_empty(event_queue)) {
+            error = process_event();
+            if (judge_last_window) window = 1;
+
+        }
+    }
+
     else if (window==GAME_END) {
 
         if (!al_is_event_queue_empty(event_queue)) {
