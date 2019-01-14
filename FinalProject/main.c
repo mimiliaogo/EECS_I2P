@@ -16,6 +16,8 @@
 #define GAME_END 6
 #define STORE 7
 #define RANK 8
+#define ANIMATION 9
+
 // ALLEGRO Variables
 ALLEGRO_DISPLAY* display = NULL;
 ALLEGRO_EVENT_QUEUE *event_queue = NULL;
@@ -31,6 +33,8 @@ ALLEGRO_BITMAP *exit_background = NULL;
 ALLEGRO_BITMAP *store= NULL;
 ALLEGRO_BITMAP *no_money= NULL;
 ALLEGRO_BITMAP *image_marcie_bomb = NULL;
+ALLEGRO_BITMAP *pre_ani_background = NULL;
+ALLEGRO_BITMAP *animation_background = NULL;
 ALLEGRO_KEYBOARD_STATE keyState ;
 ALLEGRO_TIMER *timer = NULL;
 ALLEGRO_TIMER *timer2 = NULL;
@@ -38,13 +42,14 @@ ALLEGRO_TIMER *timer3 = NULL;
 ALLEGRO_TIMER *bullet_timer = NULL;
 ALLEGRO_TIMER *bomb_start_timer = NULL;
 ALLEGRO_TIMER *bomb_shoot_timer = NULL;
-ALLEGRO_TIMER *animation_timer = NULL;
+ALLEGRO_TIMER *ani_timer = NULL;
 ALLEGRO_TIMER *bone1_go_timer = NULL;
 ALLEGRO_TIMER *bone2_go_timer = NULL;
 ALLEGRO_SAMPLE *song=NULL;
 ALLEGRO_FONT *font_20 = NULL;
 ALLEGRO_FONT *font_12 = NULL;
 ALLEGRO_FONT *font_15 = NULL;
+
 float mouse_x, mouse_y;
 //Custom Definition
 const char *title = "Final Project 10xxxxxxx";
@@ -100,7 +105,8 @@ typedef struct
 
 BONE bone[10];
 
-char title_ani[25] = "Hi,everybody";
+char ani_word[25] = "Hi,everybody";
+char ani_word_tmp[25];
 char money_str[25];
 char weapon_str[25];
 int pre_ani_str = 11;
@@ -112,6 +118,7 @@ int done = 0;
 int window = PRE_ANIMATION;
 int NumOfData;
 int k = 0;
+int p = 0;
 int shield_time = 0;
 int bone_time = 0;
 
@@ -230,15 +237,17 @@ void game_init() {
     al_register_event_source(event_queue, al_get_keyboard_event_source());
     al_register_event_source(event_queue, al_get_mouse_event_source());
     //For the pre_animation
-    animation_timer  = al_create_timer(1.0/15.0);
-    al_register_event_source(event_queue, al_get_timer_event_source(animation_timer));
-    al_start_timer(animation_timer);
+//    ani_timer  = al_create_timer(1.0/15.0);
+//    al_register_event_source(event_queue, al_get_timer_event_source(animation_timer));
+//    al_start_timer(animation_timer);
 
     // Imag load
     about_background = al_load_bitmap("about.png");
     exit_background = al_load_bitmap("exit.png");
     store = al_load_bitmap("store.png");
     no_money = al_load_bitmap("no_money.png");
+    pre_ani_background = al_load_bitmap("pre_ani_background.png");
+    animation_background = al_load_bitmap("animation.png");
 //    pre_animation_pic = al_load_bitmap("envelop.png");
 
     //weapon initial
@@ -249,10 +258,9 @@ void game_init() {
 }
 void pre_animation()
 {
-    al_draw_bitmap(about_background, 0,0, 0);
-    al_draw_text(font_20, al_map_rgb(255,215,0), WIDTH/2, 100 , ALLEGRO_ALIGN_CENTRE, "Please enter your name!");
-    al_draw_text(font_20, al_map_rgb(255,215,0), WIDTH/2-100, 600 , ALLEGRO_ALIGN_CENTRE, data[NumOfData-1].name);
-
+    al_draw_bitmap(pre_ani_background, 0,0, 0);
+    al_draw_text(font_20, al_map_rgb(255,215,0), WIDTH/2, 85 , ALLEGRO_ALIGN_CENTRE, "Please enter your name!");
+    al_draw_text(font_20, al_map_rgb(255,215,0), WIDTH/2+130, 123 , ALLEGRO_ALIGN_CENTRE, data[NumOfData-1].name);
 }
 void main_menu()
 {
@@ -333,9 +341,9 @@ int collide_user()
 }
 int collide_bone(int n)
 {
-    if (bullet.y<bone[n].y&&bullet.x>bone[n].x+5&&bullet.x<bone[n].x+95&&bone[n].is_bullet_bone==false) {
+    if (bullet.y<bone[n].y&&bullet.x>bone[n].x-3&&bullet.x<bone[n].x+85&&bone[n].is_bullet_bone==false) {
         bone[n].is_bullet_bone = true;
-        data[NumOfData-1].score += 10;
+        data[NumOfData-1].score += 5;
         return 1;
     }
     return 0;
@@ -376,6 +384,19 @@ int process_event(){
 //        al_draw_text(font_20, al_map_rgb(255,215,0), WIDTH/2, 100 , ALLEGRO_ALIGN_CENTRE, title_ani);
 //
 //    }
+
+    int s;
+    if (event.timer.source == ani_timer) {
+        for (s=0; s<strlen(ani_word); s++) {
+            ani_word_tmp[s] = ani_word[s];
+        }
+        ani_word_tmp[p] = '\0';
+        if (p<strlen(ani_word)) p++;
+//        printf("%d", p);
+//        printf("%s\n", ani_word_tmp);
+
+    }
+
     if(event.timer.source == timer){
 
         if(character2.x < -150) dir = false;
@@ -590,17 +611,31 @@ int game_run() {
 
     if (window == PRE_ANIMATION) {
         pre_animation();
-//        scanf(fin, "%s", data[NumOfData-1].name);
-
-
         al_flip_display();
         if (!al_is_event_queue_empty(event_queue)) {
             error = process_event();
-            if (judge_next_window) window = 1;
+            if (judge_next_window) {
+                window = ANIMATION;
+                ani_timer  = al_create_timer(1.0/1.0);
+                al_register_event_source(event_queue, al_get_timer_event_source(ani_timer)) ;
+                al_start_timer(ani_timer);
+            }
         }
-
+        al_clear_to_color(al_map_rgb(0,0,0));
 
     }
+    if (window == ANIMATION) {
+        al_draw_bitmap(animation_background, -15, 0, 0);
+        al_draw_text(font_20, al_map_rgb(255,255,255), WIDTH/2-80, HEIGHT/2+180 , ALLEGRO_ALIGN_CENTRE, ani_word_tmp);
+        if (!al_is_event_queue_empty(event_queue)) {
+            error = process_event();
+            if (judge_next_window) window = MAIN_MENU;
+
+        }
+        al_flip_display();
+        al_clear_to_color(al_map_rgb(0,0,0));
+    }
+
     // First window(Menu)
 //    main_menu;
     if(window == MAIN_MENU){
@@ -712,10 +747,10 @@ int game_run() {
 //        if (bone1_start&&bone1_len>0) show_bone1(bone1_len);
         //bullet to computer
         if (collide_computer()) {
-            len_comp -= 10;
+            len_comp -= 15;
         }
         if (collide_user()) {
-            len_user -= 10;
+            len_user -= 15;
         }
 
 
@@ -818,9 +853,9 @@ void game_destroy() {
     // Make sure you destroy all things
     al_destroy_event_queue(event_queue);
     al_destroy_display(display);
-    al_destrㄇㄠoy_timer(timer);
+    al_destroy_timer(timer);
     al_destroy_timer(timer2);
-    al_destroy_timer(animation_timer);
+    al_destroy_timer(ani_timer);
     al_destroy_timer(bomb_shoot_timer);
     al_destroy_timer(bullet_timer);
     al_destroy_timer(bomb_start_timer);
