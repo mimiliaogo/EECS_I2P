@@ -15,7 +15,7 @@
 #define EXIT 4
 #define GAME_END 6
 #define STORE 7
-
+#define RANK 8
 // ALLEGRO Variables
 ALLEGRO_DISPLAY* display = NULL;
 ALLEGRO_EVENT_QUEUE *event_queue = NULL;
@@ -39,6 +39,8 @@ ALLEGRO_TIMER *bullet_timer = NULL;
 ALLEGRO_TIMER *bomb_start_timer = NULL;
 ALLEGRO_TIMER *bomb_shoot_timer = NULL;
 ALLEGRO_TIMER *animation_timer = NULL;
+ALLEGRO_TIMER *bone1_go_timer = NULL;
+ALLEGRO_TIMER *bone2_go_timer = NULL;
 ALLEGRO_SAMPLE *song=NULL;
 ALLEGRO_FONT *font_20 = NULL;
 ALLEGRO_FONT *font_12 = NULL;
@@ -63,6 +65,7 @@ Character character2;
 Character character3;
 Character bullet;
 Character bomb;
+Character bone1;
 
 typedef struct weapon
 {
@@ -74,13 +77,28 @@ typedef struct weapon
 
 } WEAPON;
 WEAPON shield;
-
+WEAPON first_aid_kit;
 typedef struct
 {
     int score;
     int money;
     char name[25];
 } USER;
+USER data[1000];
+
+typedef struct
+{
+    int x;
+    int y;
+    bool start;
+    int len;
+    int speed;
+    ALLEGRO_BITMAP *image_path;
+    bool dir;//false for -->
+    bool is_bullet_bone;
+} BONE;
+
+BONE bone[10];
 
 char title_ani[25] = "Hi,everybody";
 char money_str[25];
@@ -95,11 +113,14 @@ int window = PRE_ANIMATION;
 int NumOfData;
 int k = 0;
 int shield_time = 0;
-USER data[100000];
+int bone_time = 0;
 
-float move_speed = 10.0;
+
+float move_speed = 5.0;
 float bullet_speed = 50;
 float bomb_speed = 60;
+float bone_speed = 4;
+float bone1_len = 80.0;
 float len_comp = 180.0;
 float len_user = 180.0;
 bool judge_next_window = false;
@@ -109,6 +130,7 @@ bool next = false; //true: trigger
 bool dir = true; //true: left, false: right
 bool bullet_shoot_user = false;//shoot the bullet
 bool bomb_start = false;//shoot the bomb
+bool bone1_start = false;
 bool is_bullet = false;
 bool is_bomb = false;
 bool show_origin = true;
@@ -117,6 +139,7 @@ bool user_win = false;
 bool isno_money = false;
 bool name_end = false;
 bool show_origin_user = true;
+bool money_added = false;
 void show_err_msg(int msg);
 void game_init();
 void game_begin();
@@ -138,7 +161,7 @@ int main(int argc, char *argv[]) {
         fscanf(fin, "%s", data[i].name);
         fscanf(fin, "%d%d", &data[i].score, &data[i].money);
     }
-
+    fclose(fin);
     game_init();
     game_begin();
 
@@ -147,6 +170,15 @@ int main(int argc, char *argv[]) {
         if (msg == GAME_TERMINATE)
             printf("Game Over\n");
     }
+    fout = fopen("user_data.txt", "w");
+    fprintf(fout, "%d\n", NumOfData);
+    for (i=0; i<NumOfData; i++) {
+        fprintf(fout, "%s\n", data[i].name);
+        fprintf(fout, "%d\n", data[i].score);
+        fprintf(fout, "%d\n", data[i].money);
+    }
+    fclose(fout);
+
 
     game_destroy();
     return 0;
@@ -248,15 +280,27 @@ void print_money()
     al_draw_text(font_20, al_map_rgb(255,255,255), WIDTH/2+160, HEIGHT/2-320 , ALLEGRO_ALIGN_CENTRE, "$");
 
 }
-
+void print_score()
+{
+    sprintf(money_str, "%d", data[NumOfData-1].score);
+    al_draw_text(font_20, al_map_rgb(255,255,255), WIDTH/2+300, HEIGHT/2-300 , ALLEGRO_ALIGN_CENTRE, money_str);
+    al_draw_text(font_20, al_map_rgb(255,255,255), WIDTH/2+200, HEIGHT/2-300 , ALLEGRO_ALIGN_CENTRE, "SCORE: ");
+}
 void show_weapon_time()
 {
     al_draw_text(font_20, al_map_rgb(255,255,255), 60, HEIGHT/2-320 , ALLEGRO_ALIGN_CENTRE, "Shield:");
     sprintf(weapon_str, "%d", shield.use_time);
     al_draw_text(font_20, al_map_rgb(255,255,255), 150, HEIGHT/2-320 , ALLEGRO_ALIGN_CENTRE, weapon_str);
-
+    al_draw_text(font_15, al_map_rgb(255,255,255), 70, HEIGHT/2-290 , ALLEGRO_ALIGN_CENTRE, "First-aid kit:");
+    sprintf(weapon_str, "%d", first_aid_kit.use_time);
+    al_draw_text(font_15, al_map_rgb(255,255,255), 150, HEIGHT/2-290 , ALLEGRO_ALIGN_CENTRE, weapon_str);
 }
-
+void show_bone(int n)
+{
+    al_draw_rectangle(bone[n].x,bone[n].y-10,bone[n].x+bone[n].len,bone[n].y-10,al_map_rgb(255, 0, 255), 10);
+    al_draw_rectangle(bone[n].x-5,bone[n].y-20,bone[n].x+bone[n].len,bone[n].y, al_map_rgb(255, 120, 100), 2);
+    al_draw_bitmap(bone[n].image_path, bone[n].x, bone[n].y, 0);
+}
 void blood_rec_computer(float len)
 {
     al_draw_rectangle(WIDTH-len,20,WIDTH,20,al_map_rgb(255, 0, 0), 30);
@@ -267,9 +311,10 @@ void blood_rec_user(float len)
 }
 int collide_computer()
 {
-    if (bullet.y<character2.y&&bullet.x>character2.x+5&&bullet.x<character2.x+95&&is_bullet==false) {
+    if (bullet.y<character2.y&&bullet.x>character2.x+10&&bullet.x<character2.x+95&&is_bullet==false) {
         is_bullet = true;
         show_origin = false;
+        data[NumOfData-1].score += 50;
         return 1;
     }
 
@@ -281,9 +326,25 @@ int collide_user()
     if (bomb.y>character1.y&&is_bomb==false&&bomb.x>character1.x-5&&bomb.x<character1.x+65&&shield.is_using==false) {
         is_bomb = true;
         show_origin_user = false;
+        data[NumOfData-1].score -= 50;
         return 1;
     }
     return 0;
+}
+int collide_bone(int n)
+{
+    if (bullet.y<bone[n].y&&bullet.x>bone[n].x+5&&bullet.x<bone[n].x+95&&bone[n].is_bullet_bone==false) {
+        bone[n].is_bullet_bone = true;
+        data[NumOfData-1].score += 10;
+        return 1;
+    }
+    return 0;
+}
+int cmp_score(const void *a, const void *b)
+{
+    USER *pa = (USER *)a;
+    USER *pb = (USER *)b;
+    return pb->score-pa->score;
 }
 void game_begin() {
     // Load sound
@@ -325,7 +386,14 @@ int process_event(){
         move_speed += 0.0001;
 
         shield_time ++;
-
+        bone_time ++;
+        int w;
+        for (w=0; w<4; w++) {
+            if (bone[w].x<0) bone[w].dir = false; //--->
+            else if (bone[w].x>600) bone[w].dir = true;
+            if (dir) bone[w].x -= bone[w].speed;
+            else bone[w].x += bone[w].speed;
+        }
     }
     if(event.timer.source == timer2){
         ture = false;
@@ -349,6 +417,28 @@ int process_event(){
     if(event.timer.source == bomb_shoot_timer) {
         bomb.y += bomb_speed;
     }
+
+//    if (bone_time%200==0) {
+//        bone1_start = true;
+//        bone1_len = 80.0;
+////        al_start_timer(bone1_go_timer);
+//        bone1.x =  ( rand() % (600-20+1) ) + 20;
+//        bone1.y = ( rand() % (300-50+1) ) + 50;
+//    }
+
+    int w;
+    for (w=0; w<4; w++) {
+        if (bone_time%(200+50*w)==0&&bone_time>0) {
+            bone[w].start = true;
+            bone[w].len = 80;
+            bone[w].x =  ( rand() % (600-20+1) ) + 20;
+            bone[w].y = ( rand() % (300-50+1) ) + 50;
+        }
+    }
+//
+//    if (event.timer.source == bone1_go_timer) {
+//        bone1.x -= bone_speed;
+//    }
 
 
     // Keyboard
@@ -384,6 +474,10 @@ int process_event(){
                      bullet.x = character1.x;
                      bullet.y = character1.y;
                      is_bullet = false;
+                     int k;
+                     for (k=0; k<4; k++) {
+                        bone[k].is_bullet_bone = false;
+                     }
                 }
                 break;
             // For About
@@ -408,10 +502,11 @@ int process_event(){
             //for shield
             case ALLEGRO_KEY_P:
                 if (window==STORE) {
-                    if (data[NumOfData-1].money<=0) {
+                    if (data[NumOfData-1].money<50) {
                         isno_money = true;
                     }
                     else {
+                        isno_money = false;
                         data[NumOfData-1].money -= 50;
                         shield.use_time += 1;
                     }
@@ -423,7 +518,31 @@ int process_event(){
                         shield.is_using = true;
                     }
                 }
-            break;
+                break;
+            case ALLEGRO_KEY_B:
+                if (window == STORE) {
+                    if (data[NumOfData-1].money<60) {
+                        isno_money = true;
+                    }
+                    else {
+                        isno_money = false;
+                        data[NumOfData-1].money -= 60;
+                        first_aid_kit.use_time += 1;
+                    }
+                }
+                else if (window==2) {
+                    if (first_aid_kit.use_time>0) {
+                        first_aid_kit.use_time -= 1;
+                        len_user += 10;
+                    }
+                }
+            case ALLEGRO_KEY_R:
+                if (window==GAME_END) {
+                    window = RANK;
+                }
+                else if (window==MAIN_MENU) {
+                    window = RANK;
+                }
         }
     }
     //keyboard input
@@ -453,9 +572,9 @@ int process_event(){
         }
     }
 
-    if (len_user<0) comp_win = true;
+    if (len_user<=0) comp_win = true;
 
-    if (len_comp<0) user_win = true;
+    if (len_comp<=0) user_win = true;
 
 
     // Shutdown our program
@@ -473,11 +592,11 @@ int game_run() {
         pre_animation();
 //        scanf(fin, "%s", data[NumOfData-1].name);
 
-        main_menu_button();
+
         al_flip_display();
         if (!al_is_event_queue_empty(event_queue)) {
             error = process_event();
-            if (judge_last_window) window = 1;
+            if (judge_next_window) window = 1;
         }
 
 
@@ -490,6 +609,15 @@ int game_run() {
             error = process_event();
             if(judge_next_window) {
                 window = 2;
+                //user initial
+                data[NumOfData-1].score = 0;
+                money_added = false;
+                comp_win = false;
+                user_win = false;
+                len_user = 180.0;
+                len_comp = 180.0;
+                //bone initial
+
                 // Setting Character
                 character1.x = WIDTH / 2;
                 character1.y = HEIGHT - 210 ;
@@ -502,7 +630,13 @@ int game_run() {
                 character3.image_path = al_load_bitmap("snoopy_right.png");
                 image_snoopy_left_shoot = al_load_bitmap("snoopy_left_shoot.png");
                 bullet.image_path = al_load_bitmap("bullet.png");
-                bomb.image_path = al_load_bitmap("bullet.png");
+                bomb.image_path = al_load_bitmap("bomb.png");
+                int t;
+                for (t=0; t<4; t++) {
+                    bone[t].image_path = al_load_bitmap("bone.png");
+                    bone[t].start = false;
+                    bone[t].speed = t*0.01+t+2;
+                }
                 background = al_load_bitmap("snoopy_background_resized.png");
                 image_snoopy_right_shoot = al_load_bitmap("snoopy_right_shoot.png");
                 image_marcie_bomb = al_load_bitmap("marcie_bomb.png");
@@ -513,12 +647,16 @@ int game_run() {
                 bullet_timer = al_create_timer(1.0/15.0);
                 bomb_shoot_timer = al_create_timer(1.0/15.0);
                 bomb_start_timer = al_create_timer(1.0/1.0);
+//                bone1_go_timer = al_create_timer(1.0/15.0);
+//                bone2_go_timer = al_create_timer(1.0/15.0);
                 al_register_event_source(event_queue, al_get_timer_event_source(timer)) ;
                 al_register_event_source(event_queue, al_get_timer_event_source(timer2)) ;
                 al_register_event_source(event_queue, al_get_timer_event_source(timer3)) ;
                 al_register_event_source(event_queue, al_get_timer_event_source(bullet_timer)) ;
                 al_register_event_source(event_queue, al_get_timer_event_source(bomb_shoot_timer)) ;
                 al_register_event_source(event_queue, al_get_timer_event_source(bomb_start_timer)) ;
+//                al_register_event_source(event_queue, al_get_timer_event_source(bone1_go_timer)) ;
+//                al_register_event_source(event_queue, al_get_timer_event_source(bone2_go_timer)) ;
                 al_start_timer(timer);
                 al_start_timer(timer2);
                 al_start_timer(timer3);
@@ -534,6 +672,7 @@ int game_run() {
 
         al_draw_bitmap(background, 0,0, 0);
         show_weapon_time();
+        print_score();
         blood_rec_computer(len_comp);
         blood_rec_user(len_user);
         main_menu_button();
@@ -558,9 +697,19 @@ int game_run() {
         //bullet for user
 
         if(bullet_shoot_user) al_draw_bitmap(bullet.image_path, bullet.x, bullet.y, 0);
-
+//        if (bullet.y==1) is_bullet = false;
         //bomb for computer
         if(bomb_start) al_draw_bitmap(bomb.image_path, bomb.x, bomb.y, 0);
+        //bone
+        int t;
+        for (t=0; t<4; t++) {
+            if (bone[t].start&&bone[t].len>0) show_bone(t);
+            if (collide_bone(t)) {
+                bone[t].len -= 40;
+            }
+        }
+
+//        if (bone1_start&&bone1_len>0) show_bone1(bone1_len);
         //bullet to computer
         if (collide_computer()) {
             len_comp -= 10;
@@ -568,6 +717,8 @@ int game_run() {
         if (collide_user()) {
             len_user -= 10;
         }
+
+
         if (bullet.y<-300) show_origin = true;
         if (bomb.y>900) show_origin_user = true;
         if (shield_time>80) shield.is_using = false;
@@ -576,8 +727,7 @@ int game_run() {
         }
 
 
-        al_flip_display();
-        al_clear_to_color(al_map_rgb(0,0,0));
+
 
         // Listening for new event
         if (!al_is_event_queue_empty(event_queue)) {
@@ -585,6 +735,8 @@ int game_run() {
             if (judge_last_window) window = 1;
             if (comp_win==true||user_win == true) window = GAME_END;
         }
+        al_flip_display();
+        al_clear_to_color(al_map_rgb(0,0,0));
     }
     //about window
     else if (window == ABOUT) {
@@ -626,12 +778,35 @@ int game_run() {
 
         }
     }
-
-    else if (window==GAME_END) {
-
+    else if (window == RANK) {
+        al_clear_to_color(al_map_rgb(0,0,0));
+        qsort(data, NumOfData, sizeof(USER), cmp_score);
+        main_menu_button();
+        int j;
+        for (j=0; j<NumOfData; j++) {
+            al_draw_text(font_20, al_map_rgb(255,255,255), 100, HEIGHT/2-300+40*j , ALLEGRO_ALIGN_CENTRE, data[j].name);
+            sprintf(money_str, "%d", data[j].score);
+            al_draw_text(font_20, al_map_rgb(255,255,255), WIDTH/2+200, HEIGHT/2-300+40*j , ALLEGRO_ALIGN_CENTRE, money_str);
+        }
         if (!al_is_event_queue_empty(event_queue)) {
             error = process_event();
+            if (judge_last_window) window = 1;
         }
+        al_flip_display();
+    }
+
+    else if (window==GAME_END) {
+        al_clear_to_color(al_map_rgb(0,230,128));
+        main_menu_button();
+        if (data[NumOfData-1].score>0&&money_added == false) {
+            money_added = true;
+            data[NumOfData-1].money += data[NumOfData-1].score;
+        }
+        if (!al_is_event_queue_empty(event_queue)) {
+            error = process_event();
+            if (judge_last_window) window = 1;
+        }
+        al_flip_display();
     }
     judge_last_window = false;
     judge_next_window = false;
