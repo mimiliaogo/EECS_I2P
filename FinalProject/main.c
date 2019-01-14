@@ -818,7 +818,7 @@ void game_destroy() {
     // Make sure you destroy all things
     al_destroy_event_queue(event_queue);
     al_destroy_display(display);
-    al_destroy_timer(timer);
+    al_destrㄇㄠoy_timer(timer);
     al_destroy_timer(timer2);
     al_destroy_timer(animation_timer);
     al_destroy_timer(bomb_shoot_timer);
