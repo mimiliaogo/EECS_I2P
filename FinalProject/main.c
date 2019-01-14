@@ -35,6 +35,9 @@ ALLEGRO_BITMAP *no_money= NULL;
 ALLEGRO_BITMAP *image_marcie_bomb = NULL;
 ALLEGRO_BITMAP *pre_ani_background = NULL;
 ALLEGRO_BITMAP *animation_background = NULL;
+ALLEGRO_BITMAP *main_menu_background = NULL;
+ALLEGRO_BITMAP *win = NULL;
+ALLEGRO_BITMAP *lose = NULL;
 ALLEGRO_KEYBOARD_STATE keyState ;
 ALLEGRO_TIMER *timer = NULL;
 ALLEGRO_TIMER *timer2 = NULL;
@@ -46,6 +49,10 @@ ALLEGRO_TIMER *ani_timer = NULL;
 ALLEGRO_TIMER *bone1_go_timer = NULL;
 ALLEGRO_TIMER *bone2_go_timer = NULL;
 ALLEGRO_SAMPLE *song=NULL;
+ALLEGRO_SAMPLE *pc_keyboard = NULL;
+ALLEGRO_SAMPLE *shoot = NULL;
+ALLEGRO_SAMPLE *hurt = NULL;
+ALLEGRO_SAMPLE *ya = NULL;
 ALLEGRO_FONT *font_20 = NULL;
 ALLEGRO_FONT *font_12 = NULL;
 ALLEGRO_FONT *font_15 = NULL;
@@ -105,7 +112,7 @@ typedef struct
 
 BONE bone[10];
 
-char ani_word[25] = "Hi,everybody";
+char ani_word[25] = "ARE YOU READY?";
 char ani_word_tmp[25];
 char money_str[25];
 char weapon_str[25];
@@ -248,6 +255,7 @@ void game_init() {
     no_money = al_load_bitmap("no_money.png");
     pre_ani_background = al_load_bitmap("pre_ani_background.png");
     animation_background = al_load_bitmap("animation.png");
+    main_menu_background = al_load_bitmap("main_menu.png");
 //    pre_animation_pic = al_load_bitmap("envelop.png");
 
     //weapon initial
@@ -265,11 +273,12 @@ void pre_animation()
 void main_menu()
 {
 
-    al_clear_to_color(al_map_rgb(51,161,201));
-    al_draw_text(font_20, al_map_rgb(255,215,0), WIDTH/2, 100 , ALLEGRO_ALIGN_CENTRE, "Press 'A' to about");
-    al_draw_text(font_20, al_map_rgb(218,112,114), WIDTH/2, 200 , ALLEGRO_ALIGN_CENTRE, "Press 'E' to Exit");
-    al_draw_text(font_15, al_map_rgb(255,255,255), WIDTH/2, HEIGHT/2+220 , ALLEGRO_ALIGN_CENTRE, "Press 'Enter' to start");
-    al_draw_rectangle(WIDTH/2-150, 510, WIDTH/2+150, 920, al_map_rgb(255, 255, 255), 10);
+    al_draw_bitmap(main_menu_background, -20,0, 0);
+
+//    al_draw_text(font_20, al_map_rgb(255,215,0), WIDTH/2, 100 , ALLEGRO_ALIGN_CENTRE, "Press 'A' to about");
+//    al_draw_text(font_20, al_map_rgb(218,112,114), WIDTH/2, 200 , ALLEGRO_ALIGN_CENTRE, "Press 'E' to Exit");
+//    al_draw_text(font_15, al_map_rgb(255,255,255), WIDTH/2, HEIGHT/2+220 , ALLEGRO_ALIGN_CENTRE, "Press 'Enter' to start");
+//    al_draw_rectangle(WIDTH/2-150, 510, WIDTH/2+150, 920, al_map_rgb(255, 255, 255), 10);
 
     al_flip_display();
     al_clear_to_color(al_map_rgb(0,0,0));
@@ -357,12 +366,16 @@ int cmp_score(const void *a, const void *b)
 void game_begin() {
     // Load sound
     song = al_load_sample( "hello.wav" );
+    pc_keyboard = al_load_sample( "pc_keyboard.wav" );
+    shoot = al_load_sample( "launcher.wav" );
+    hurt = al_load_sample( "kick.wav" );
+    ya = al_load_sample( "angel.wav" );
     if (!song){
         printf( "Audio clip sample not loaded!\n" );
         show_err_msg(-1);
     }
     // Loop the song until the display closes
-    al_play_sample(song, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_LOOP,NULL);
+//    al_play_sample(song, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_LOOP,NULL);
 
     // Load and (draw text)
     font_20 = al_load_ttf_font("pirulen.ttf",20,0);
@@ -415,6 +428,7 @@ int process_event(){
             if (dir) bone[w].x -= bone[w].speed;
             else bone[w].x += bone[w].speed;
         }
+
     }
     if(event.timer.source == timer2){
         ture = false;
@@ -499,6 +513,7 @@ int process_event(){
                      for (k=0; k<4; k++) {
                         bone[k].is_bullet_bone = false;
                      }
+                     al_play_sample(shoot, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);
                 }
                 break;
             // For About
@@ -513,7 +528,7 @@ int process_event(){
                     //PRESS Again  'E' to terminate.
                     return GAME_TERMINATE;
                 }
-                else if (window==1) window = 4;
+                else if (window==1||window == GAME_END|| window == RANK) window = 4;
                 break;
             case ALLEGRO_KEY_S:
                 if (window==MAIN_MENU) {
@@ -616,7 +631,7 @@ int game_run() {
             error = process_event();
             if (judge_next_window) {
                 window = ANIMATION;
-                ani_timer  = al_create_timer(1.0/1.0);
+                ani_timer  = al_create_timer(1.0/3.0);
                 al_register_event_source(event_queue, al_get_timer_event_source(ani_timer)) ;
                 al_start_timer(ani_timer);
             }
@@ -625,6 +640,7 @@ int game_run() {
 
     }
     if (window == ANIMATION) {
+        al_play_sample(pc_keyboard, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_LOOP,NULL);
         al_draw_bitmap(animation_background, -15, 0, 0);
         al_draw_text(font_20, al_map_rgb(255,255,255), WIDTH/2-80, HEIGHT/2+180 , ALLEGRO_ALIGN_CENTRE, ani_word_tmp);
         if (!al_is_event_queue_empty(event_queue)) {
@@ -639,6 +655,7 @@ int game_run() {
     // First window(Menu)
 //    main_menu;
     if(window == MAIN_MENU){
+        al_destroy_sample(pc_keyboard);
         main_menu();
         if (!al_is_event_queue_empty(event_queue)) {
             error = process_event();
@@ -675,6 +692,8 @@ int game_run() {
                 background = al_load_bitmap("snoopy_background_resized.png");
                 image_snoopy_right_shoot = al_load_bitmap("snoopy_right_shoot.png");
                 image_marcie_bomb = al_load_bitmap("marcie_bomb.png");
+                win = al_load_bitmap("win.png");
+                lose = al_load_bitmap("lose.png");
                 //Initialize Timer
                 timer  = al_create_timer(1.0/15.0);
                 timer2  = al_create_timer(1.0);
@@ -748,9 +767,11 @@ int game_run() {
         //bullet to computer
         if (collide_computer()) {
             len_comp -= 15;
+//            al_play_sample(ya, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);
         }
         if (collide_user()) {
             len_user -= 15;
+            al_play_sample(hurt, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);
         }
 
 
@@ -760,6 +781,7 @@ int game_run() {
         if (shield.is_using == true) {
             al_draw_rectangle(character1.x,character1.y-10,character1.x+65,character1.y+150 ,al_map_rgb(234, 24, 145), 5);
         }
+
 
 
 
@@ -818,8 +840,9 @@ int game_run() {
         qsort(data, NumOfData, sizeof(USER), cmp_score);
         main_menu_button();
         int j;
+        al_draw_text(font_20, al_map_rgb(255,255,255), WIDTH/2, HEIGHT/2-350 , ALLEGRO_ALIGN_CENTRE, "===RANK===");
         for (j=0; j<NumOfData; j++) {
-            al_draw_text(font_20, al_map_rgb(255,255,255), 100, HEIGHT/2-300+40*j , ALLEGRO_ALIGN_CENTRE, data[j].name);
+            al_draw_text(font_20, al_map_rgb(255,255,255), 100, HEIGHT/2-280+40*j , ALLEGRO_ALIGN_CENTRE, data[j].name);
             sprintf(money_str, "%d", data[j].score);
             al_draw_text(font_20, al_map_rgb(255,255,255), WIDTH/2+200, HEIGHT/2-300+40*j , ALLEGRO_ALIGN_CENTRE, money_str);
         }
@@ -831,7 +854,15 @@ int game_run() {
     }
 
     else if (window==GAME_END) {
-        al_clear_to_color(al_map_rgb(0,230,128));
+//        al_clear_to_color(al_map_rgb(0,230,128));
+        if (comp_win) al_draw_bitmap(lose, -80,0, 0);
+        else al_draw_bitmap(win, 0,0, 0);
+        sprintf(money_str, "%d", data[NumOfData-1].score);
+        al_draw_text(font_20, al_map_rgb(255,255,255), WIDTH/2+20, HEIGHT/2+120 , ALLEGRO_ALIGN_CENTRE, money_str);
+        al_draw_text(font_20, al_map_rgb(255,255,255), WIDTH/2-70, HEIGHT/2+120 , ALLEGRO_ALIGN_CENTRE, "SCORE: ");
+        sprintf(money_str, "%d", data[NumOfData-1].money);
+        al_draw_text(font_20, al_map_rgb(255,255,255), WIDTH/2+20, HEIGHT/2+170 , ALLEGRO_ALIGN_CENTRE, money_str);
+        al_draw_text(font_20, al_map_rgb(255,255,255), WIDTH/2-70, HEIGHT/2+170 , ALLEGRO_ALIGN_CENTRE, "$");
         main_menu_button();
         if (data[NumOfData-1].score>0&&money_added == false) {
             money_added = true;
@@ -842,6 +873,7 @@ int game_run() {
             if (judge_last_window) window = 1;
         }
         al_flip_display();
+        al_clear_to_color(al_map_rgb(0,0,0));
     }
     judge_last_window = false;
     judge_next_window = false;
